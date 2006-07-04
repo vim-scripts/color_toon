@@ -1,0 +1,53 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1597
+
+Shows the colors and the cterm/gui numbers of the colors. Shows the current syntax highlighting of the color scheme.
+You can change the highlighting colors and save a copy
+in a 'myjunk.vim' colorscheme.
+
+Usage: Colortoon
+       Colortoon d  - shows 2nd group of 127 cterm_gui colors
+       Colortoon j  - sets colors from last myjunk.vim file
+       
+        (1) First, run Colortoon.
+        (2) Get the desired range of colors into the NamedColors window:
+              If cc is mapped to Colorchange as in the suggested setup,
+              typing cc will type for you the command line:
+              Colorchange h 9
+              Following 9<Space>, type a number between 0 and 6.
+                0 or blank - All the colors (too many for vim < 7)
+                1 - 1st group of 182 named colors (only for guifg and guibg)
+                2 - 2nd group of 182 named colors (only for guifg and guibg)
+                3 - 3rd group of 182 named colors (only for guifg and guibg)
+                4 - 1st group of 128 cterm_gui colors
+                5 - 2nd group of 127 cterm_gui colors
+                6 - All 255 cterm_gui colors (too many for vim < 7)
+
+                4 or 5 is recommended.
+                You may follow the number with a space and the letter r if you
+                want to see color blocks instead of colored lettering.
+
+              Step (2) may be repeated whenever desired.
+                
+        (3) Position to desired hi group in myjunk window and type :y b
+        (4) Position to desired color in NamedColors window and type :y a
+        (5) Colormake                 - Set foreground color per registers a,b
+            Colormake b               - Set background color per registers a,b
+            If you mapped cm to Colormake as in the suggested setup,
+            type cm instead.
+
+         In steps 3 & 4, ':y a' means :y<SPACEBAR>a<RETURN>
+                                   or :yank<SPACEBAR>a<RETURN>
+                                   or "ayy
+ 
+                               ':y b' means :y<SPACEBAR>b<RETURN>
+                                   or :yank<SPACEBAR>b<RETURN>
+                                   or "byy
+                         
+                        If you consistently(!) reverse a and b, it still works.
+
+
+You can also try editing the line in the myjunk window, then copy and 
+paste that line to the command line which will also update highlighting.
+You can copy the line with  yy
+                 and paste it with  :@"
+
