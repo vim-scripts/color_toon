@@ -1,7 +1,7 @@
 "color_toon.vim -- colorscheme toy
 " Maintainer:   Walter Hutchins
-" Last Change:  July 04 2006
-" Version:      1.0
+" Last Change:  July 05 2006
+" Version:      1.1
 " Setup:        Copy color_toon.vim to ~/.vim/plugin/
 "               Copy light.vim to ~/
 "               Copy dark.vim to ~/
@@ -18,8 +18,15 @@
 "If myjunk.vim gets to where you don't like it anymore, then delete it
 "and it will be created from your default colorscheme (maybe).
 "Usage: Colortoon
-"       Colortoon -dark
+"       Colortoon -d[ark] -n[ojunk]
 "       call Color_toon()
+"       
+"       Colortoon -d  Does dark colors first (see < 7 Oops:)
+"       Colortoon -n  Does not input syntax from any myjunk.vim file,
+"                     it uses the current color scheme.
+"       
+"       Defaults are to start with light colors and try to use myjunk colors.
+"
 "Somethings: to do are:
 "Scroll up and down in the 'dark' and 'light' windows to see what the
 "cterm and gui numbers are for the colors.
@@ -34,7 +41,7 @@
 "Now, select the whole line you just edited (starts with 'hi '), 
 "type : to go into command mode, paste with the mouse, and hit enter.
 "You should see the new highlighting.
-"Oops: can't help it:
+"Oops: vim < 7 can't help it:
 "Yes, when you start up Colortoon, there will be an error -- too many 
 "highlighting groups while it is trying to show the colors in the 
 "light and dark windows.  It stumbles after around 200th one encountered. 
@@ -44,12 +51,19 @@
 "Remember to use :qa! and :q! whenever you like -- to bail out.
 command -nargs=* Colortoon call Color_toon(<f-args>)
 function Color_toon(...)
+
 let choice="light"
-if a:0 > 0
-    if a:1 ==? "dark" || a:1 =~? "^-d"
+let remargs=a:0
+while remargs > 0
+    exec 'let thearg=a:'.remargs
+    if thearg ==? "dark" || thearg =~? "^-d"
         let choice="dark"
+    elseif thearg ==? "nojunk" || thearg =~? "^-n"
+        let nojunk="nojunk"
     endif
-endif
+    let remargs=remargs - 1
+endwhile
+
 let myjunk='~/.vim/colors/myjunk.vim'
 let first='~/light.vim'
 let last='~/dark.vim'
@@ -59,8 +73,12 @@ if exists("choice")
         let last='~/light.vim'
     endif
 endif
+
+if !exists("nojunk") || nojunk != "nojunk"
+    colo myjunk
+endif
+
 "Current highlighting specs
-colo myjunk
 set hidden lazyredraw nomore report=99999 shortmess=aoOstTW wrapscan
 new
 exec 'edit ' myjunk
@@ -73,12 +91,23 @@ put a
 %s/xxx//
 g/^$/d
 g/^cterm_\d\+/d
+g/ cleared/d
 g/\(\n\)\s\+/j
+" precede syntax command
+% substitute /^[^ ]*/syn keyword & &/
+" execute syntax commands
+syntax clear
+% yank b
+@b
+" remove syntax commands again
+% substitute /^syn keyword \(\S\+\) //
 %s/^/hi /
-1
+" show Normal at top
+/Normal/
+"1
+" we don't want to save myjunk unless user made a change
+set nomodified
 
-"Current highlighting test
-so $VIMRUNTIME/syntax/hitest.vim
 
 "Colors choices to look at
 "First colors - 1st ~ 200 display actual color
@@ -91,4 +120,9 @@ vnew
 exec 'edit ' last
 g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' ctermfg='.strpart(expand("<cword>"),6).' guifg=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6)| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
 1
+
+" the following trick avoids the "Press RETURN ..." prompt
+0 append
+.
+
 endfunction
