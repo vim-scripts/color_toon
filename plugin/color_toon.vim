@@ -1,7 +1,7 @@
 "color_toon.vim -- colorscheme toy
 " Maintainer:   Walter Hutchins
-" Last Change:  July 06 2006
-" Version:      1.2
+" Last Change:  Friday, July 07 2006
+" Version:      1.3
 " Setup:        Copy color_toon.vim to ~/.vim/plugin/
 "
 "               Windows - copy to $VIMRUNTIME/plugin
@@ -14,14 +14,14 @@
 "Please liberally use :qa! and :q! whenever you like.
 "
 "Usage: Colortoon
-"       Colortoon -d[ark] -n[ojunk]
+"       Colortoon -d[ark] -j[unk]
 "       call Color_toon()
 "       
 "       Colortoon -d  Does dark colors first (see < 7 Oops:)
-"       Colortoon -n  Does not input syntax from any myjunk.vim file,
-"                     it uses the current color scheme.
+"       Colortoon -j  Input syntax from myjunk.vim file
 "       
-"       Defaults are to start with light colors and try to use myjunk colors.
+"       Defaults are to start with light colors and to not use myjunk colors.
+"       This was changed in version 1.3 from default of using myjunk.
 "
 " Usage: (1) First, run Colortoon.
 "        (2) Position to desired hi group in myjunk window and type :y b
@@ -61,6 +61,17 @@
 " (9) Go into the myjunk window and type :w! (only if you like it.)
 " Note: The custom color won't 'stick' if you later change that hi group.
 "
+"Manually edit a hi group and manually "refresh" the highlighting.
+" (1) Edit the hi group line in the myjunk window.
+" (2) On that line, in normal mode, type 0v$y
+" (3) Type :@"<ENTER>
+"
+"Translate a supported color from gui to cterm or cterm to gui to make
+" it work the same in both gui and xterm.
+"
+"Get assistance with selecting a color from the colorsel.vim script
+" at www.vim.org
+"
 " Note: If you use set guifont= in a vim setting, there could be a resulting
 "       font= part in one of the hi groups and you should edit it out
 "       to be friendly to xterms.
@@ -91,14 +102,14 @@ let s:register_a  = @a
 let s:register_b  = @b
 let s:register_se = @/
 
-let choice="light"
+let s:choice="light"
 let remargs=a:0
 while remargs > 0
     exec 'let thearg=a:'.remargs
     if thearg ==? "dark" || thearg =~? "^-d"
-        let choice="dark"
-    elseif thearg ==? "nojunk" || thearg =~? "^-n"
-        let nojunk="nojunk"
+        let s:choice="dark"
+    elseif thearg ==? "junk" || thearg =~? "^-j"
+        let s:junk="junk"
     endif
     let remargs=remargs - 1
 endwhile
@@ -113,24 +124,56 @@ let light=s:light()
 let dark=s:dark()
 let first=light
 let last=dark
-if exists("choice")
-    if choice ==? "dark"
+if exists("s:choice")
+    if s:choice ==? "dark"
         let first=dark
         let last=light
     endif
 endif
 
-if !exists("nojunk") || nojunk != "nojunk"
+if exists("s:junk") && s:junk == "junk"
     colo myjunk
 endif
 
-"Current highlighting specs
+"myjunk window - current highlighting specs
 set hidden lazyredraw nomore report=99999 shortmess=aoOstTW wrapscan
 new
 ":help window-move-cursor
 let s:myjunk_window=winnr()
-"exe s:myjunk_window . "wincmd w" 
 exec 'edit ' myjunk
+"Can we capture the intro?
+let s:color_intro=""
+let s:colorname=""
+if exists("g:colors_name")
+    let s:colorname=g:colors_name
+    let cur_scheme=s:colorname
+    let cur_f=""
+    let cur_chk=$VIMRUNTIME . '/colors/' . cur_scheme . '.vim'
+    if filereadable(cur_chk)
+        let cur_f=cur_chk
+    endif
+    if $OS =~? "Windows"
+        let cur_chk=$HOME . '/colors/' . cur_scheme . '.vim' "?????
+    else
+        let cur_chk=$HOME . '/.vim/colors/' . cur_scheme . '.vim'
+    endif
+    if filereadable(cur_chk)
+        let cur_f=cur_chk
+    endif
+    if cur_f != ""
+        reg_h=@h
+        new
+        exec 'r' . cur_f
+        "foo\(bar\)\@!
+        g/^hi\s\+\(clear\)\@!/d
+        "Some commands in the intro would mess things up, so comment them
+        %s/^\([^"]\)/"\1/
+        % yank h
+        q!
+        let s:color_intro=@h
+        @h=reg_h
+    endif
+endif
 call s:Myjunk()
 
 
@@ -139,7 +182,7 @@ call s:Myjunk()
 new
 let s:myjunk_window=s:myjunk_window + 1
 "exec 'edit ' first
-if exists("choice") && choice ==? "dark"
+if exists("s:choice") && s:choice ==? "dark"
     exec 'edit dark'
 else
     exec 'edit light'
@@ -156,7 +199,7 @@ set nomodified
 vnew
 let s:myjunk_window=s:myjunk_window + 1
 "exec 'edit ' last
-if exists("choice") && choice ==? "dark"
+if exists("s:choice") && s:choice ==? "dark"
     exec 'edit light'
 else
     exec 'edit dark'
@@ -211,9 +254,13 @@ hi
 redir END
 put a
 %s/^.*links to.*$//
+"foo\(bar\)\@!
+%s/font=.*\(term\|cterm\|gui\)\@!//e
 %s/xxx//
 g/^$/d
-g/^col_cterm_\d\+/d
+"g/^col_cterm_\d\+/d
+g/^col_cterm_/d
+g/^colorsel/d
 g/ cleared/d
 g/\(\n\)\s\+/j
 " precede syntax command
@@ -225,9 +272,6 @@ syntax clear
 " remove syntax commands again
 % substitute /^syn keyword \(\S\+\) //
 %s/^/hi /
-"1
-" we don't want to save myjunk unless user made a change
-set nomodified
 
 " restore global options and registers
 let &hidden      = hidden
@@ -241,6 +285,16 @@ let @b           = register_b
 " restore last search pattern
 call histdel("search", -1)
 let @/ = register_se
+
+if s:color_intro != "" && s:colorname != ""
+    if match(s:color_intro, 'colors_name\s*=\s*"' . s:colorname . '"')
+        let @@=s:color_intro
+        1put!
+    endif
+endif
+
+" we don't want to save myjunk unless user made a change
+set nomodified
 
 " the following trick avoids the "Press RETURN ..." prompt
 0 append
@@ -278,8 +332,11 @@ function Color_toon_make(...)
         return
     endif
     let color_group=matchstr(group, '\S*', 3)
-    let gui_color=strpart(color, strlen(color)-7)
-    let gui_color='#' . substitute(gui_color, '\n', '', '')
+    let gui_start=match(color, 'gui_')+4
+    let gui_end=match(color, '[^a-zA-Z0-9]', gui_start)
+    let gui_len=gui_end - gui_start
+    let gui_color=strpart(color, gui_start, gui_len)
+    let gui_color='#' . gui_color
     let cterm_start=match(color, '_')
     let cterm_end=match(color, '_', cterm_start+1)
     let cterm_len=cterm_end - cterm_start
@@ -291,10 +348,10 @@ function Color_toon_make(...)
         let spec=substitute(group, 'ctermfg=\S*', ctermfg, '')
         let spec=substitute(spec, 'guifg=\S*', guifg, '')
         if match(spec, 'ctermfg=') == -1
-            let spec=spec . ctermfg
+            let spec=substitute(spec, '\(hi \S*\)', '\1' . ctermfg, '')
         endif
         if match(spec, 'guifg=') == -1
-            let spec=spec . guifg
+            let spec=substitute(spec, '\(hi \S*\)', '\1' . guifg, '')
         endif
     endif
 
@@ -304,10 +361,10 @@ function Color_toon_make(...)
         let spec=substitute(group, 'ctermbg=\S*', ctermbg, '')
         let spec=substitute(spec, 'guibg=\S*', guibg, '')
         if match(spec, 'ctermbg=') == -1
-            let spec=spec . ctermbg
+            let spec=substitute(spec, '\(hi \S*\)', '\1' . ctermbg, '')
         endif
         if match(spec, 'guibg=') == -1
-            let spec=spec . guibg
+            let spec=substitute(spec, '\(hi \S*\)', '\1' . guibg, '')
         endif
     endif
 
