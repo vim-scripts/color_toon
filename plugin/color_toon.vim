@@ -1,7 +1,7 @@
 "color_toon.vim -- colorscheme toy
 " Maintainer:   Walter Hutchins
 " Last Change:  Friday, July 07 2006
-" Version:      1.3
+" Version:      1.3.01
 " Setup:        Copy color_toon.vim to ~/.vim/plugin/
 "
 "               Windows - copy to $VIMRUNTIME/plugin
@@ -153,7 +153,7 @@ if exists("g:colors_name")
         let cur_f=cur_chk
     endif
     if $OS =~? "Windows"
-        let cur_chk=$HOME . '/colors/' . cur_scheme . '.vim' "?????
+        let cur_chk=$VIMRUNTIME . '/colors/' . cur_scheme . '.vim' "?????
     else
         let cur_chk=$HOME . '/.vim/colors/' . cur_scheme . '.vim'
     endif
@@ -161,9 +161,9 @@ if exists("g:colors_name")
         let cur_f=cur_chk
     endif
     if cur_f != ""
-        reg_h=@h
+        let reg_h=@h
         new
-        exec 'r' . cur_f
+        exec 'r ' . cur_f
         "foo\(bar\)\@!
         g/^hi\s\+\(clear\)\@!/d
         "Some commands in the intro would mess things up, so comment them
@@ -171,7 +171,7 @@ if exists("g:colors_name")
         % yank h
         q!
         let s:color_intro=@h
-        @h=reg_h
+        let @h=reg_h
     endif
 endif
 call s:Myjunk()
@@ -287,7 +287,7 @@ call histdel("search", -1)
 let @/ = register_se
 
 if s:color_intro != "" && s:colorname != ""
-    if match(s:color_intro, 'colors_name\s*=\s*"' . s:colorname . '"')
+    if match(s:color_intro, 'colors_name\s*=\s*"' . s:colorname . '"') != -1
         let @@=s:color_intro
         1put!
     endif
