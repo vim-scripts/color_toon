@@ -1,7 +1,7 @@
 "color_toon.vim -- colorscheme toy
 " Maintainer:   Walter Hutchins
 " Last Change:  July 13 2006
-" Version:      1.4
+" Version:      1.4.01
 " Requires:     colornames.vim plugin (Version 1.3 or later)
 "
 " Setup:        Copy color_toon.vim to ~/.vim/plugin/
@@ -266,6 +266,7 @@ redir @a
 silent hi
 redir END
 put a
+%s/^\s\+//
 %s/^.*links to.*$//
 "foo\(bar\)\@!
 %s/font=.*\(term\|cterm\|gui\)\@!//e
