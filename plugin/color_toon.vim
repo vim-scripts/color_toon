@@ -1,8 +1,15 @@
 "color_toon.vim -- colorscheme toy
 " Maintainer:   Walter Hutchins
-" Last Change:  Friday, July 07 2006
-" Version:      1.3.01
+" Last Change:  July 13 2006
+" Version:      1.4
+" Requires:     colornames.vim plugin (Version 1.3 or later)
+"
 " Setup:        Copy color_toon.vim to ~/.vim/plugin/
+"               Copy colornames.vim to ~/.vim/plugin/
+"               Recommend adding to vimrc the mappings:
+"                  map cn  :Colortoon<Space>
+"                  map cm  :Colormake<Space>
+"                  map cc  :Colorchange h 9<Space>
 "
 "               Windows - copy to $VIMRUNTIME/plugin
 "                       - adjust myjunk | adjust plugin location if necessary.
@@ -14,20 +21,35 @@
 "Please liberally use :qa! and :q! whenever you like.
 "
 "Usage: Colortoon
-"       Colortoon -d[ark] -j[unk]
-"       call Color_toon()
+"       Colortoon d  - shows 2nd group of 127 cterm_gui colors
+"       Colortoon j  - sets colors from last myjunk.vim file
 "       
-"       Colortoon -d  Does dark colors first (see < 7 Oops:)
-"       Colortoon -j  Input syntax from myjunk.vim file
-"       
-"       Defaults are to start with light colors and to not use myjunk colors.
-"       This was changed in version 1.3 from default of using myjunk.
-"
 " Usage: (1) First, run Colortoon.
-"        (2) Position to desired hi group in myjunk window and type :y b
-"        (3) Position to desired color in light or dark window and type :y a
-"        (4) Colormake                 - Set foreground color per registers a,b
-"            Colormake -b[ackground]   - Set background color per registers a,b
+"        (2) Get the desired range of colors into the NamedColors window:
+"              If cc is mapped to Colorchange as in the suggested setup,
+"              typing cc will type for you the command line:
+"              Colorchange h 9
+"              Following 9<Space>, type a number between 0 and 6.
+"                0 or blank - All the colors (too many for vim < 7)
+"                1 - 1st group of 182 named colors (only for guifg and guibg)
+"                2 - 2nd group of 182 named colors (only for guifg and guibg)
+"                3 - 3rd group of 182 named colors (only for guifg and guibg)
+"                4 - 1st group of 128 cterm_gui colors
+"                5 - 2nd group of 127 cterm_gui colors
+"                6 - All 255 cterm_gui colors (too many for vim < 7)
+"
+"                4 or 5 is recommended.
+"                You may follow the number with a space and the letter r if you
+"                want to see color blocks instead of colored lettering.
+"
+"              Step (2) may be repeated whenever desired.
+"                
+"        (3) Position to desired hi group in myjunk window and type :y b
+"        (4) Position to desired color in NamedColors window and type :y a
+"        (5) Colormake                 - Set foreground color per registers a,b
+"            Colormake b               - Set background color per registers a,b
+"            If you mapped cm to Colormake as in the suggested setup,
+"            type cm instead.
 "
 "         In steps 2 & 3, ':y a' means :y<SPACEBAR>a<RETURN>
 "                                   or :yank<SPACEBAR>a<RETURN>
@@ -39,7 +61,7 @@
 "                        If you consistently(!) reverse a and b, it still works.
 "
 "Somethings: to do are:
-"Scroll up and down in the 'dark' and 'light' windows to see what the
+"Scroll up and down in the NamedColors window to see what the
 "cterm and gui numbers are for the colors.
 "Scroll up and down in the 'myjunk.vim' window to see highlighting groups.
 "Go into myjunk window and :w! to save current colors in myjunk.vim.
@@ -63,7 +85,7 @@
 "
 "Manually edit a hi group and manually "refresh" the highlighting.
 " (1) Edit the hi group line in the myjunk window.
-" (2) On that line, in normal mode, type 0v$y
+" (2) On that line, in normal mode, type yy
 " (3) Type :@"<ENTER>
 "
 "Translate a supported color from gui to cterm or cterm to gui to make
@@ -72,24 +94,36 @@
 "Get assistance with selecting a color from the colorsel.vim script
 " at www.vim.org
 "
-" Note: If you use set guifont= in a vim setting, there could be a resulting
-"       font= part in one of the hi groups and you should edit it out
-"       to be friendly to xterms.
-"
-"Oops: vim < 7 can't help it:
-"Vim < 7, when you start up Colortoon, there will be an error -- too many 
-"highlighting groups while it is trying to show the colors in the 
-"light and dark windows.  It stumbles after around 200th one encountered. 
-"If you need to see the rest of dark ones, say 'Colortoon -dark'. 
-"May need to completely get out of all windows before it will show 
-"different ones (this is a funny thing.)
-"
 "Remember to use :qa! and :q! whenever you like -- to bail out.
 command -nargs=* Colortoon call Color_toon(<f-args>)
 command -nargs=* Colormake call Color_toon_make(<f-args>)
+command -nargs=* Colorchange call s:Showhexcolornames(<f-args>)
 
+function s:Showhexcolornames(...)
+    let outargs="9"
+    let comma=","
+    let nxtarg=0
+    let remargs=a:0
+    while remargs > 0
+        let nxtarg=nxtarg + 1
+        exec 'let arg=a:' . nxtarg
+        let outargs=outargs . comma
+        if arg !~? '[a-z]'
+            let outargs=outargs . arg
+        else
+            let outargs=outargs . '"' . arg . '"'
+        endif
+        let remargs=remargs - 1
+    endwhile
+    exec 'call Showhexcolornames(' . outargs . ')'
+endfunction
+           
 "Begin function Color_toon
 function Color_toon(...)
+if !exists("*Showhexcolornames")
+    echo "ERROR: colornames.vim v1.3 or later is required, but not installed!"
+    return
+endif
 
 " save global options and registers
 let s:hidden      = &hidden
@@ -102,13 +136,16 @@ let s:register_a  = @a
 let s:register_b  = @b
 let s:register_se = @/
 
+let g:zoo=""
+let s:junk=""
+let s:myjunk_buf=""
 let s:choice="light"
 let remargs=a:0
 while remargs > 0
     exec 'let thearg=a:'.remargs
-    if thearg ==? "dark" || thearg =~? "^-d"
+    if thearg =~? "^d" || thearg =~? "^-d"
         let s:choice="dark"
-    elseif thearg ==? "junk" || thearg =~? "^-j"
+    elseif thearg =~? "^j" || thearg =~? "^-j"
         let s:junk="junk"
     endif
     let remargs=remargs - 1
@@ -120,16 +157,7 @@ else
     let myjunk='~/.vim/colors/myjunk.vim'
 endif
 
-let light=s:light()
-let dark=s:dark()
-let first=light
-let last=dark
-if exists("s:choice")
-    if s:choice ==? "dark"
-        let first=dark
-        let last=light
-    endif
-endif
+let s:myjunk_buf=myjunk
 
 if exists("s:junk") && s:junk == "junk"
     colo myjunk
@@ -167,7 +195,8 @@ if exists("g:colors_name")
         "foo\(bar\)\@!
         g/^hi\s\+\(clear\)\@!/d
         "Some commands in the intro would mess things up, so comment them
-        %s/^\([^"]\)/"\1/
+        g/^\(\s*hi\s\+clear\s\+\S\+\|\s*set\s\+\|\s*let\s\+.*colors_name\s*=\)\@!/ s/^\([^"]\)/"\1/e
+        g/^$/d
         % yank h
         q!
         let s:color_intro=@h
@@ -176,45 +205,20 @@ if exists("g:colors_name")
 endif
 call s:Myjunk()
 
+" the following trick avoids the "Press RETURN ..." prompt
+"0 append
+".
+
 
 "Colors choices to look at
-"First colors - 1st ~ 200 display actual color
-new
-let s:myjunk_window=s:myjunk_window + 1
-"exec 'edit ' first
-if exists("s:choice") && s:choice ==? "dark"
-    exec 'edit dark'
-else
-    exec 'edit light'
+if !bufloaded("NamedColors")
+    let s:myjunk_window=s:myjunk_window + 1
 endif
-1,$d
-put =first
-g/^$/d
-g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' ctermfg='.strpart(expand("<cword>"),6).' guifg=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6)| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
-1
-" we don't want to save the temporary file
-set nomodified
-
-"Last colors - ones beyond ~ 200th will display random colors
-vnew
-let s:myjunk_window=s:myjunk_window + 1
-"exec 'edit ' last
 if exists("s:choice") && s:choice ==? "dark"
-    exec 'edit light'
+    call Showhexcolornames(9,5,"h")
 else
-    exec 'edit dark'
+    call Showhexcolornames(9,4,"h")
 endif
-1,$d
-put =last
-g/^$/d
-g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' ctermfg='.strpart(expand("<cword>"),6).' guifg=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6)| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
-1
-" we don't want to save the temporary file
-set nomodified
-
-" the following trick avoids the "Press RETURN ..." prompt
-0 append
-.
 
 " restore global options and registers
 let &hidden      = s:hidden
@@ -230,12 +234,21 @@ let @b           = s:register_b
 call histdel("search", -1)
 let @/ = s:register_se
 
+exec s:myjunk_window . "wincmd w" 
+" show Normal at top
+if !search('\chi normal','w')
+    echo "WARNING: No Normal! The background may be wrong for xterms!"
+    if !search('\chi comment','w')
+        let nnc=search('\chi cursor','w')
+    endif
+endif
+
 endfunction
 "End function Color_toon
 
 "Begin function s:Myjunk()
 function s:Myjunk(...)
-exe s:myjunk_window . "wincmd w" 
+exec s:myjunk_window . "wincmd w" 
 
 " save global options and registers
 let hidden      = &hidden
@@ -250,7 +263,7 @@ let register_se = @/
 set hidden lazyredraw nomore report=99999 shortmess=aoOstTW wrapscan
 1,$d
 redir @a
-hi
+silent hi
 redir END
 put a
 %s/^.*links to.*$//
@@ -258,17 +271,17 @@ put a
 %s/font=.*\(term\|cterm\|gui\)\@!//e
 %s/xxx//
 g/^$/d
-"g/^col_cterm_\d\+/d
-g/^col_cterm_/d
-g/^colorsel/d
-g/ cleared/d
+silent g/^col_cterm_/d
+silent g/^col_[0-9a-fA-F]\{6,6}_/d
+silent g/^colorsel/d
+silent g/ cleared/d
 g/\(\n\)\s\+/j
 " precede syntax command
 % substitute /^[^ ]*/syn keyword & &/
 " execute syntax commands
 syntax clear
 % yank b
-@b
+silent @b
 " remove syntax commands again
 % substitute /^syn keyword \(\S\+\) //
 %s/^/hi /
@@ -299,8 +312,6 @@ set nomodified
 " the following trick avoids the "Press RETURN ..." prompt
 0 append
 .
-" show Normal at top
-/Normal/
 
 endfunction
 "End function s:Myjunk()
@@ -309,7 +320,7 @@ endfunction
 function Color_toon_make(...)
     if a:0 == 0
         let ground="fg"
-    elseif a:1 ==? "background" || a:1 =~? "^-b"
+    elseif a:1 =~? "^[br]" || a:1 =~? "^-b"
         let ground="bg"
     else
         let ground="fg"
@@ -318,12 +329,12 @@ function Color_toon_make(...)
     let color=""
     let reg_a=@a
     let reg_b=@b
-    if match(reg_a, "cterm_") != -1
+    if match(reg_a, "cterm_") != -1 || match(reg_a, '[a-fA-F0-9]\{6,6}_') != -1
         let color=reg_a
     elseif match(reg_a, "=") != -1
         let group=reg_a
     endif
-    if match(reg_b, "cterm_") != -1
+    if match(reg_b, "cterm_") != -1 || match(reg_b, '[a-fA-F0-9]\{6,6}_') != -1
         let color=reg_b
     elseif match(reg_b, "=") != -1
         let group=reg_b
@@ -332,22 +343,33 @@ function Color_toon_make(...)
         return
     endif
     let color_group=matchstr(group, '\S*', 3)
-    let gui_start=match(color, 'gui_')+4
-    let gui_end=match(color, '[^a-zA-Z0-9]', gui_start)
+    let named_color=0
+    if match(color, 'gui_') != - 1
+        let gui_start=match(color, 'gui_')+4
+        let gui_end=match(color, '[^a-zA-Z0-9]', gui_start)
+    elseif match(color, '[a-fA-F0-9]\{6,6}_') != - 1
+        let gui_start=matchend(color, '[a-fA-F0-9]\{6,6}_')
+        let gui_end=match(color, '[^a-zA-Z0-9]', gui_start)
+        let named_color=1
+    endif
     let gui_len=gui_end - gui_start
     let gui_color=strpart(color, gui_start, gui_len)
-    let gui_color='#' . gui_color
-    let cterm_start=match(color, '_')
-    let cterm_end=match(color, '_', cterm_start+1)
-    let cterm_len=cterm_end - cterm_start
-    let cterm_color=strpart(color, cterm_start+1, cterm_len-1)
-
+    if !named_color
+        let gui_color='#' . gui_color
+        let cterm_start=match(color, '_')
+        let cterm_end=match(color, '_', cterm_start+1)
+        let cterm_len=cterm_end - cterm_start
+        let cterm_color=strpart(color, cterm_start+1, cterm_len-1)
+    endif
+    let spec=group
     if ground == "fg"
-        let ctermfg=' ctermfg=' . cterm_color . ' '
+        if !named_color
+            let ctermfg=' ctermfg=' . cterm_color . ' '
+            let spec=substitute(spec, 'ctermfg=\S*', ctermfg, '')
+        endif
         let guifg=' guifg=' . gui_color . ' '
-        let spec=substitute(group, 'ctermfg=\S*', ctermfg, '')
         let spec=substitute(spec, 'guifg=\S*', guifg, '')
-        if match(spec, 'ctermfg=') == -1
+        if !named_color && match(spec, 'ctermfg=') == -1
             let spec=substitute(spec, '\(hi \S*\)', '\1' . ctermfg, '')
         endif
         if match(spec, 'guifg=') == -1
@@ -356,11 +378,13 @@ function Color_toon_make(...)
     endif
 
     if ground == "bg"
-        let ctermbg=' ctermbg=' . cterm_color . ' '
+        if !named_color
+            let ctermbg=' ctermbg=' . cterm_color . ' '
+            let spec=substitute(spec, 'ctermbg=\S*', ctermbg, '')
+        endif
         let guibg=' guibg=' . gui_color . ' '
-        let spec=substitute(group, 'ctermbg=\S*', ctermbg, '')
         let spec=substitute(spec, 'guibg=\S*', guibg, '')
-        if match(spec, 'ctermbg=') == -1
+        if !named_color && match(spec, 'ctermbg=') == -1
             let spec=substitute(spec, '\(hi \S*\)', '\1' . ctermbg, '')
         endif
         if match(spec, 'guibg=') == -1
@@ -368,277 +392,21 @@ function Color_toon_make(...)
         endif
     endif
 
-    exec spec
-    call s:Myjunk()
-    if !exists("s:myjunk_window")
+    let g:zoo=g:zoo.':'.s:myjunk_window.':'.s:myjunk_buf.':'.bufwinnr(s:myjunk_buf).':'.s:junk
+    if !exists("s:myjunk_window") || bufwinnr(s:myjunk_buf) == -1
         echo "Did you forget to run Colortoon? Myjunk is in window(" . not_exists . ")"
+        "not_exists doesn't exist so it would throw an error -- I know,
+    else
+        exec s:myjunk_window . "wincmd w" 
+        let pat=group
+        if match(pat,"\n") != -1 || match(pat,'\n') != -1
+            let pat=strpart(pat,0,strlen(pat)-1)
+        endif
+        exec '/' . pat . '/ s/' . pat . '/' . spec . '/'
+        exec 's/\(=\S*\)\s*/\1 /ge'
+        exec 's/' . nr2char(10) . '//ge'
+        exec spec
     endif
     return spec
 endfunction
 "End function Color_toon_make
-
-function s:light()
-let light=""
-let light=light . "cterm_1_gui_ce0000" . "\n"
-let light=light . "cterm_2_gui_00cb00" . "\n"
-let light=light . "cterm_3_gui_cecb00" . "\n"
-let light=light . "cterm_5_gui_ce00ce" . "\n"
-let light=light . "cterm_6_gui_00cbce" . "\n"
-let light=light . "cterm_7_gui_e7e3e7" . "\n"
-let light=light . "cterm_9_gui_ff0000" . "\n"
-let light=light . "cterm_10_gui_00ff00" . "\n"
-let light=light . "cterm_11_gui_ffff00" . "\n"
-let light=light . "cterm_12_gui_5a5dff" . "\n"
-let light=light . "cterm_13_gui_ff00ff" . "\n"
-let light=light . "cterm_14_gui_00ffff" . "\n"
-let light=light . "cterm_15_gui_ffffff" . "\n"
-let light=light . "cterm_32_gui_0087d7" . "\n"
-let light=light . "cterm_33_gui_0087ff" . "\n"
-let light=light . "cterm_34_gui_00af00" . "\n"
-let light=light . "cterm_35_gui_00af5f" . "\n"
-let light=light . "cterm_36_gui_00af87" . "\n"
-let light=light . "cterm_37_gui_00afaf" . "\n"
-let light=light . "cterm_38_gui_00afd7" . "\n"
-let light=light . "cterm_39_gui_00afff" . "\n"
-let light=light . "cterm_40_gui_00d700" . "\n"
-let light=light . "cterm_41_gui_00d75f" . "\n"
-let light=light . "cterm_42_gui_00d787" . "\n"
-let light=light . "cterm_43_gui_00d7af" . "\n"
-let light=light . "cterm_44_gui_00d7d7" . "\n"
-let light=light . "cterm_45_gui_00d7ff" . "\n"
-let light=light . "cterm_46_gui_00ff00" . "\n"
-let light=light . "cterm_47_gui_00ff5f" . "\n"
-let light=light . "cterm_48_gui_00ff87" . "\n"
-let light=light . "cterm_49_gui_00ffaf" . "\n"
-let light=light . "cterm_50_gui_00ffd7" . "\n"
-let light=light . "cterm_51_gui_00ffff" . "\n"
-let light=light . "cterm_63_gui_5f5fff" . "\n"
-let light=light . "cterm_67_gui_5f87af" . "\n"
-let light=light . "cterm_68_gui_5f87d7" . "\n"
-let light=light . "cterm_69_gui_5f87ff" . "\n"
-let light=light . "cterm_70_gui_5faf00" . "\n"
-let light=light . "cterm_71_gui_5faf5f" . "\n"
-let light=light . "cterm_72_gui_5faf87" . "\n"
-let light=light . "cterm_73_gui_5fafaf" . "\n"
-let light=light . "cterm_74_gui_5fafd7" . "\n"
-let light=light . "cterm_75_gui_5fafff" . "\n"
-let light=light . "cterm_76_gui_5fd700" . "\n"
-let light=light . "cterm_77_gui_5fd75f" . "\n"
-let light=light . "cterm_78_gui_5fd787" . "\n"
-let light=light . "cterm_79_gui_5fd7af" . "\n"
-let light=light . "cterm_80_gui_5fd7d7" . "\n"
-let light=light . "cterm_81_gui_5fd7ff" . "\n"
-let light=light . "cterm_82_gui_5fff00" . "\n"
-let light=light . "cterm_83_gui_5fff5f" . "\n"
-let light=light . "cterm_84_gui_5fff87" . "\n"
-let light=light . "cterm_85_gui_5fffaf" . "\n"
-let light=light . "cterm_86_gui_5fffd7" . "\n"
-let light=light . "cterm_87_gui_5fffff" . "\n"
-let light=light . "cterm_98_gui_875fd7" . "\n"
-let light=light . "cterm_99_gui_875fff" . "\n"
-let light=light . "cterm_103_gui_8787af" . "\n"
-let light=light . "cterm_104_gui_8787d7" . "\n"
-let light=light . "cterm_105_gui_8787ff" . "\n"
-let light=light . "cterm_106_gui_87af00" . "\n"
-let light=light . "cterm_107_gui_87af5f" . "\n"
-let light=light . "cterm_108_gui_87af87" . "\n"
-let light=light . "cterm_109_gui_87afaf" . "\n"
-let light=light . "cterm_110_gui_87afd7" . "\n"
-let light=light . "cterm_111_gui_87afff" . "\n"
-let light=light . "cterm_112_gui_87d700" . "\n"
-let light=light . "cterm_113_gui_87d75f" . "\n"
-let light=light . "cterm_114_gui_87d787" . "\n"
-let light=light . "cterm_115_gui_87d7af" . "\n"
-let light=light . "cterm_116_gui_87d7d7" . "\n"
-let light=light . "cterm_117_gui_87d7ff" . "\n"
-let light=light . "cterm_118_gui_87ff00" . "\n"
-let light=light . "cterm_119_gui_87ff5f" . "\n"
-let light=light . "cterm_120_gui_87ff87" . "\n"
-let light=light . "cterm_121_gui_87ffaf" . "\n"
-let light=light . "cterm_122_gui_87ffd7" . "\n"
-let light=light . "cterm_123_gui_87ffff" . "\n"
-let light=light . "cterm_134_gui_af5fd7" . "\n"
-let light=light . "cterm_135_gui_af5fff" . "\n"
-let light=light . "cterm_136_gui_af8700" . "\n"
-let light=light . "cterm_137_gui_af875f" . "\n"
-let light=light . "cterm_138_gui_af8787" . "\n"
-let light=light . "cterm_139_gui_af87af" . "\n"
-let light=light . "cterm_140_gui_af87d7" . "\n"
-let light=light . "cterm_141_gui_af87ff" . "\n"
-let light=light . "cterm_142_gui_afaf00" . "\n"
-let light=light . "cterm_143_gui_afaf5f" . "\n"
-let light=light . "cterm_144_gui_afaf87" . "\n"
-let light=light . "cterm_145_gui_afafaf" . "\n"
-let light=light . "cterm_146_gui_afafd7" . "\n"
-let light=light . "cterm_147_gui_afafff" . "\n"
-let light=light . "cterm_148_gui_afd700" . "\n"
-let light=light . "cterm_149_gui_afd75f" . "\n"
-let light=light . "cterm_150_gui_afd787" . "\n"
-let light=light . "cterm_151_gui_afd7af" . "\n"
-let light=light . "cterm_152_gui_afd7d7" . "\n"
-let light=light . "cterm_153_gui_afd7ff" . "\n"
-let light=light . "cterm_154_gui_afff00" . "\n"
-let light=light . "cterm_155_gui_afff5f" . "\n"
-let light=light . "cterm_156_gui_afff87" . "\n"
-let light=light . "cterm_157_gui_afffaf" . "\n"
-let light=light . "cterm_158_gui_afffd7" . "\n"
-let light=light . "cterm_159_gui_afffff" . "\n"
-let light=light . "cterm_160_gui_d70000" . "\n"
-let light=light . "cterm_161_gui_d7005f" . "\n"
-let light=light . "cterm_162_gui_d70087" . "\n"
-let light=light . "cterm_163_gui_d700af" . "\n"
-let light=light . "cterm_164_gui_d700d7" . "\n"
-let light=light . "cterm_165_gui_d700ff" . "\n"
-let light=light . "cterm_166_gui_d75f00" . "\n"
-let light=light . "cterm_167_gui_d75f5f" . "\n"
-let light=light . "cterm_168_gui_d75f87" . "\n"
-let light=light . "cterm_169_gui_d75faf" . "\n"
-let light=light . "cterm_170_gui_d75fd7" . "\n"
-let light=light . "cterm_171_gui_d75fff" . "\n"
-let light=light . "cterm_172_gui_d78700" . "\n"
-let light=light . "cterm_173_gui_d7875f" . "\n"
-let light=light . "cterm_174_gui_d78787" . "\n"
-let light=light . "cterm_175_gui_d787af" . "\n"
-let light=light . "cterm_176_gui_d787d7" . "\n"
-let light=light . "cterm_177_gui_d787ff" . "\n"
-let light=light . "cterm_178_gui_d7af00" . "\n"
-let light=light . "cterm_179_gui_d7af5f" . "\n"
-let light=light . "cterm_180_gui_d7af87" . "\n"
-let light=light . "cterm_181_gui_d7afaf" . "\n"
-let light=light . "cterm_182_gui_d7afd7" . "\n"
-let light=light . "cterm_183_gui_d7afff" . "\n"
-let light=light . "cterm_184_gui_d7d700" . "\n"
-let light=light . "cterm_185_gui_d7d75f" . "\n"
-let light=light . "cterm_186_gui_d7d787" . "\n"
-let light=light . "cterm_187_gui_d7d7af" . "\n"
-let light=light . "cterm_188_gui_d7d7d7" . "\n"
-let light=light . "cterm_189_gui_d7d7ff" . "\n"
-let light=light . "cterm_190_gui_d7ff00" . "\n"
-let light=light . "cterm_191_gui_d7ff5f" . "\n"
-let light=light . "cterm_192_gui_d7ff87" . "\n"
-let light=light . "cterm_193_gui_d7ffaf" . "\n"
-let light=light . "cterm_194_gui_d7ffd7" . "\n"
-let light=light . "cterm_195_gui_d7ffff" . "\n"
-let light=light . "cterm_196_gui_ff0000" . "\n"
-let light=light . "cterm_197_gui_ff005f" . "\n"
-let light=light . "cterm_198_gui_ff0087" . "\n"
-let light=light . "cterm_199_gui_ff00af" . "\n"
-let light=light . "cterm_200_gui_ff00d7" . "\n"
-let light=light . "cterm_201_gui_ff00ff" . "\n"
-let light=light . "cterm_202_gui_ff5f00" . "\n"
-let light=light . "cterm_203_gui_ff5f5f" . "\n"
-let light=light . "cterm_204_gui_ff5f87" . "\n"
-let light=light . "cterm_205_gui_ff5faf" . "\n"
-let light=light . "cterm_206_gui_ff5fd7" . "\n"
-let light=light . "cterm_207_gui_ff5fff" . "\n"
-let light=light . "cterm_208_gui_ff8700" . "\n"
-let light=light . "cterm_209_gui_ff875f" . "\n"
-let light=light . "cterm_210_gui_ff8787" . "\n"
-let light=light . "cterm_211_gui_ff87af" . "\n"
-let light=light . "cterm_212_gui_ff87d7" . "\n"
-let light=light . "cterm_213_gui_ff87ff" . "\n"
-let light=light . "cterm_214_gui_ffaf00" . "\n"
-let light=light . "cterm_215_gui_ffaf5f" . "\n"
-let light=light . "cterm_216_gui_ffaf87" . "\n"
-let light=light . "cterm_217_gui_ffafaf" . "\n"
-let light=light . "cterm_218_gui_ffafd7" . "\n"
-let light=light . "cterm_219_gui_ffafff" . "\n"
-let light=light . "cterm_220_gui_ffd700" . "\n"
-let light=light . "cterm_221_gui_ffd75f" . "\n"
-let light=light . "cterm_222_gui_ffd787" . "\n"
-let light=light . "cterm_223_gui_ffd7af" . "\n"
-let light=light . "cterm_224_gui_ffd7d7" . "\n"
-let light=light . "cterm_225_gui_ffd7ff" . "\n"
-let light=light . "cterm_226_gui_ffff00" . "\n"
-let light=light . "cterm_227_gui_ffff5f" . "\n"
-let light=light . "cterm_228_gui_ffff87" . "\n"
-let light=light . "cterm_229_gui_ffffaf" . "\n"
-let light=light . "cterm_230_gui_ffffd7" . "\n"
-let light=light . "cterm_231_gui_ffffff" . "\n"
-let light=light . "cterm_245_gui_8a8a8a" . "\n"
-let light=light . "cterm_246_gui_949494" . "\n"
-let light=light . "cterm_247_gui_9e9e9e" . "\n"
-let light=light . "cterm_248_gui_a8a8a8" . "\n"
-let light=light . "cterm_249_gui_b2b2b2" . "\n"
-let light=light . "cterm_250_gui_bcbcbc" . "\n"
-let light=light . "cterm_251_gui_c6c6c6" . "\n"
-let light=light . "cterm_252_gui_d0d0d0" . "\n"
-let light=light . "cterm_253_gui_dadada" . "\n"
-let light=light . "cterm_254_gui_e4e4e4" . "\n"
-let light=light . "cterm_255_gui_eeeeee" . "\n"
-return light
-endfunction
-
-function s:dark()
-let dark=""
-let dark=dark . "cterm_0_gui_000000" . "\n"
-let dark=dark . "cterm_4_gui_0000ef" . "\n"
-let dark=dark . "cterm_8_gui_7b7d7b" . "\n"
-let dark=dark . "cterm_16_gui_000000" . "\n"
-let dark=dark . "cterm_17_gui_00005f" . "\n"
-let dark=dark . "cterm_18_gui_000087" . "\n"
-let dark=dark . "cterm_19_gui_0000af" . "\n"
-let dark=dark . "cterm_20_gui_0000d7" . "\n"
-let dark=dark . "cterm_21_gui_0000ff" . "\n"
-let dark=dark . "cterm_22_gui_005f00" . "\n"
-let dark=dark . "cterm_23_gui_005f5f" . "\n"
-let dark=dark . "cterm_24_gui_005f87" . "\n"
-let dark=dark . "cterm_25_gui_005faf" . "\n"
-let dark=dark . "cterm_26_gui_005fd7" . "\n"
-let dark=dark . "cterm_27_gui_005fff" . "\n"
-let dark=dark . "cterm_28_gui_008700" . "\n"
-let dark=dark . "cterm_29_gui_00875f" . "\n"
-let dark=dark . "cterm_30_gui_008787" . "\n"
-let dark=dark . "cterm_31_gui_0087af" . "\n"
-let dark=dark . "cterm_52_gui_5f0000" . "\n"
-let dark=dark . "cterm_53_gui_5f005f" . "\n"
-let dark=dark . "cterm_54_gui_5f0087" . "\n"
-let dark=dark . "cterm_55_gui_5f00af" . "\n"
-let dark=dark . "cterm_56_gui_5f00d7" . "\n"
-let dark=dark . "cterm_57_gui_5f00ff" . "\n"
-let dark=dark . "cterm_58_gui_5f5f00" . "\n"
-let dark=dark . "cterm_59_gui_5f5f5f" . "\n"
-let dark=dark . "cterm_60_gui_5f5f87" . "\n"
-let dark=dark . "cterm_61_gui_5f5faf" . "\n"
-let dark=dark . "cterm_62_gui_5f5fd7" . "\n"
-let dark=dark . "cterm_64_gui_5f8700" . "\n"
-let dark=dark . "cterm_65_gui_5f875f" . "\n"
-let dark=dark . "cterm_66_gui_5f8787" . "\n"
-let dark=dark . "cterm_88_gui_870000" . "\n"
-let dark=dark . "cterm_89_gui_87005f" . "\n"
-let dark=dark . "cterm_90_gui_870087" . "\n"
-let dark=dark . "cterm_91_gui_8700af" . "\n"
-let dark=dark . "cterm_92_gui_8700d7" . "\n"
-let dark=dark . "cterm_93_gui_8700ff" . "\n"
-let dark=dark . "cterm_94_gui_875f00" . "\n"
-let dark=dark . "cterm_95_gui_875f5f" . "\n"
-let dark=dark . "cterm_96_gui_875f87" . "\n"
-let dark=dark . "cterm_97_gui_875faf" . "\n"
-let dark=dark . "cterm_100_gui_878700" . "\n"
-let dark=dark . "cterm_101_gui_87875f" . "\n"
-let dark=dark . "cterm_102_gui_878787" . "\n"
-let dark=dark . "cterm_124_gui_af0000" . "\n"
-let dark=dark . "cterm_125_gui_af005f" . "\n"
-let dark=dark . "cterm_126_gui_af0087" . "\n"
-let dark=dark . "cterm_127_gui_af00af" . "\n"
-let dark=dark . "cterm_128_gui_af00d7" . "\n"
-let dark=dark . "cterm_129_gui_af00ff" . "\n"
-let dark=dark . "cterm_130_gui_af5f00" . "\n"
-let dark=dark . "cterm_131_gui_af5f5f" . "\n"
-let dark=dark . "cterm_132_gui_af5f87" . "\n"
-let dark=dark . "cterm_133_gui_af5faf" . "\n"
-let dark=dark . "cterm_232_gui_080808" . "\n"
-let dark=dark . "cterm_233_gui_121212" . "\n"
-let dark=dark . "cterm_234_gui_1c1c1c" . "\n"
-let dark=dark . "cterm_235_gui_262626" . "\n"
-let dark=dark . "cterm_236_gui_303030" . "\n"
-let dark=dark . "cterm_237_gui_3a3a3a" . "\n"
-let dark=dark . "cterm_238_gui_444444" . "\n"
-let dark=dark . "cterm_239_gui_4e4e4e" . "\n"
-let dark=dark . "cterm_240_gui_585858" . "\n"
-let dark=dark . "cterm_241_gui_626262" . "\n"
-let dark=dark . "cterm_242_gui_6c6c6c" . "\n"
-let dark=dark . "cterm_243_gui_767676" . "\n"
-let dark=dark . "cterm_244_gui_808080" . "\n"
-return dark
-endfunction
